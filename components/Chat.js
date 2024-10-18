@@ -1,66 +1,66 @@
 import { useEffect, useState } from 'react';
-import { StyleSheet, View, Platform, KeyboardAvoidingView, TouchableOpacity } from 'react-native';
+import { StyleSheet, Platform, KeyboardAvoidingView } from 'react-native';
 import { Bubble, GiftedChat } from "react-native-gifted-chat";
+import { query, collection, orderBy, onSnapshot, getFirestore, addDoc, Timestamp } from 'firebase/firestore';
 
 const Chat = ({ route, navigation }) => {
-  const { name, backgroundColor } = route.params;
+  const { name, backgroundColor, userID } = route.params;  
   const [messages, setMessages] = useState([]);
 
-  const onSend = (newMessages) => {
-    setMessages(previousMessages => GiftedChat.append(previousMessages, newMessages));
+  const db = getFirestore();
+
+  const onSend = async (newMessages) => {
+    const message = newMessages[0];
+    await addDoc(collection(db, "messages"), {
+      ...message,
+      createdAt: Timestamp.now(),
+      user: {
+        _id: userID,
+        name: name
+      }
+    });
   };
 
   const renderBubble = (props) => {
-    return <Bubble
-      {...props}
-      wrapperStyle={{
-        right: {
-          backgroundColor: "#000",
-        },
-        left: {
-          backgroundColor: "#FFF",
-        },
-      }}
-    />;
+    return (
+      <Bubble
+        {...props}
+        wrapperStyle={{
+          right: {
+            backgroundColor: "#000",
+          },
+          left: {
+            backgroundColor: "#FFF",
+          },
+        }}
+      />
+    );
   };
 
   useEffect(() => {
-    // Set the navigation title and set up messages when component mounts
     navigation.setOptions({ title: name });
-    
-    setMessages([
-      {
-        _id: 1,
-        text: 'Hello developer',
-        createdAt: new Date(),
-        user: {
-          _id: 2,
-          name: 'React Native',
-          avatar: 'https://placeimg.com/140/140/any',
-        },
-      },
-      {
-        _id: 2,
-        text: 'This is a system message',
-        createdAt: new Date(),
-        system: true,
-      },
-    ]);
 
-    // Reset messages when component unmounts
-    return () => {
-      setMessages([]); 
-    };
-  }, [navigation, name]);  // Added dependencies to ensure effect updates properly
+    const q = query(collection(db, "messages"), orderBy("createdAt", "desc"));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const messagesFirestore = snapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          _id: doc.id,
+          text: data.text,
+          createdAt: data.createdAt.toDate(),
+          user: data.user
+        };
+      });
+      
+      setMessages(messagesFirestore);
+    });
 
-  const handlePress = () => {
-    // Implement the logic for the "More options" button here
-    console.log("More options pressed");
-  };
+    return () => unsubscribe();
+  }, [db, navigation, name]);
 
   return (
     <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      behavior={Platform.OS === 'ios' ? 'position' : 'height'} // Adjust the behavior based on platform
       keyboardVerticalOffset={Platform.OS === 'ios' ? 40 : 0}
       style={[styles.container, { backgroundColor }]}>
       
@@ -68,7 +68,10 @@ const Chat = ({ route, navigation }) => {
         messages={messages}
         renderBubble={renderBubble}
         onSend={messages => onSend(messages)}
-        user={{ _id: 1 }}
+        user={{
+          _id: userID, 
+          name: name   
+        }}
       />
     </KeyboardAvoidingView>
   );
@@ -77,11 +80,6 @@ const Chat = ({ route, navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-  },
-  button: {
-    width: 50,
-    height: 50,
-    backgroundColor: 'gray',  // Example button style, customize as needed
   },
 });
 

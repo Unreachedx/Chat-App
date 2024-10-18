@@ -1,13 +1,23 @@
 import { useState } from 'react';
 import { StyleSheet, View, Text, TextInput, TouchableOpacity } from 'react-native';
+import { getAuth, signInAnonymously } from "firebase/auth";
+import { Alert } from "react-native";
 
 const StartScreen = ({ navigation }) => {
+  const auth = getAuth();
   const [name, setName] = useState('');
   const [selectedColor, setSelectedColor] = useState('#FFFFFF'); // Default color
 
-  const onPress = () => {
-    navigation.navigate('Chat', { name, backgroundColor: selectedColor });
-  };
+  const signInUser = () => {
+    signInAnonymously(auth)
+      .then(result => {
+        navigation.navigate('Chat', {userID: result.user.uid, name, backgroundColor: selectedColor  });
+        Alert.alert("Signed in Successfully!");
+      })
+      .catch((error) => {
+        Alert.alert("Unable to sign in, try later again.");
+      })
+  }
 
   return (
     <View style={styles.container}>
@@ -38,8 +48,10 @@ const StartScreen = ({ navigation }) => {
       
       <View style={styles.spacer} />
       
-      <TouchableOpacity style={styles.button} onPress={onPress}>
-        <Text style={styles.buttonText}>Start Chatting</Text>
+      <TouchableOpacity 
+      style={styles.startButton} 
+      onPress={signInUser}>
+        <Text style={styles.startButtonText}>Get Started</Text>
       </TouchableOpacity>
       
       <View style={styles.spacer} />
@@ -100,6 +112,21 @@ const styles = StyleSheet.create({
   spacer: {
     flex: 1,
   },
+  appTitle: {
+    fontWeight: "600",
+    fontSize: 45,
+    marginBottom: 100
+  },
+  startButton: {
+    backgroundColor: "#000",
+    height: 50,
+    width: "88%",
+    justifyContent: "center",
+    alignItems: "center"
+  },
+  startButtonText: {
+    color: "#FFF",
+  }
 });
 
 export default StartScreen;
