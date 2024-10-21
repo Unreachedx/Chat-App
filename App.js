@@ -1,50 +1,54 @@
+import React, { useEffect } from 'react';
 import StartScreen from './components/Start';
 import Chat from './components/Chat';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { initializeApp } from "firebase/app";
-import { getFirestore } from "firebase/firestore";
+import { useNetInfo } from '@react-native-community/netinfo';
 import { LogBox } from 'react-native';
+import { db } from './firebaseConfig'; // Import the db from firebaseConfig
+import { disableNetwork, enableNetwork } from "firebase/firestore";
+
 LogBox.ignoreLogs(["AsyncStorage has been extracted from"]);
 
 // Create the navigator
 const Stack = createNativeStackNavigator();
 
 const App = () => {
-// Your web app's Firebase configuration
-// For Firebase JS SDK v7.20.0 and later, measurementId is optional
-const firebaseConfig = {
-  apiKey: "AIzaSyBMmOqs30ueT8T2T7ICzU2RPuWnkbq61WM",
-  authDomain: "chat-app-database-a5f66.firebaseapp.com",
-  projectId: "chat-app-database-a5f66",
-  storageBucket: "chat-app-database-a5f66.appspot.com",
-  messagingSenderId: "661430197367",
-  appId: "1:661430197367:web:26013cf506dd7888a53a72",
-  measurementId: "G-B0S3BY8681"
-};
+  // Use NetInfo to monitor connection status
+  const netInfo = useNetInfo();
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
+  // Effect to enable/disable Firestore network based on connection status
+  useEffect(() => {
+    const toggleFirestoreNetwork = async () => {
+      if (netInfo.isConnected) {
+        await enableNetwork(db); // Enable Firestore network
+      } else {
+        await disableNetwork(db); // Disable Firestore network
+      }
+    };
 
-  // Initialize Cloud Firestore and get a reference to the service
-  const db = getFirestore(app);
+    toggleFirestoreNetwork();
+  }, [netInfo.isConnected]);
+
+  // Wrapper component for Chat
+  const ChatScreen = ({ route, navigation }) => (
+    <Chat route={route} navigation={navigation} isConnected={netInfo.isConnected} />
+  );
 
   return (
     <NavigationContainer>
-      <Stack.Navigator
-        initialRouteName="StartScreen"
-      >
+      <Stack.Navigator initialRouteName="StartScreen">
         <Stack.Screen
           name="StartScreen"
           component={StartScreen}
         />
         <Stack.Screen
           name="Chat"
-          component={Chat}
+          component={ChatScreen} // Use the wrapper component here
         />
       </Stack.Navigator>
     </NavigationContainer>
   );
-}
+};
 
 export default App;
