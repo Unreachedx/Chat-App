@@ -3,6 +3,7 @@ import { StyleSheet, Platform, KeyboardAvoidingView } from 'react-native';
 import { Bubble, GiftedChat, InputToolbar } from "react-native-gifted-chat";
 import { query, collection, orderBy, onSnapshot, getFirestore, addDoc, Timestamp } from 'firebase/firestore';
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import CustomActions from './CustomActions';
 
 const Chat = ({ route, navigation, isConnected }) => {
   const { name, backgroundColor, userID } = route.params;  
@@ -44,6 +45,10 @@ const Chat = ({ route, navigation, isConnected }) => {
       return <InputToolbar {...props} />;
     }
     return null; // Do not render anything if offline
+  };
+
+  const renderCustomActions = (props) => {
+    return <CustomActions {...props} />;
   };
 
   const cacheMessages = async (messagesToCache) => {
@@ -102,6 +107,7 @@ const Chat = ({ route, navigation, isConnected }) => {
       <GiftedChat
         renderBubble={renderBubble}
         renderInputToolbar={renderInputToolbar}
+        renderActions={renderCustomActions}
         messages={messages}
         onSend={messages => onSend(messages)}
         user={{

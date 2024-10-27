@@ -35,6 +35,9 @@ const App = () => {
     <Chat route={route} navigation={navigation} isConnected={netInfo.isConnected} />
   );
 
+
+
+
   return (
     <NavigationContainer>
       <Stack.Navigator initialRouteName="StartScreen">
