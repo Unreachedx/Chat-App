@@ -1,55 +1,40 @@
 import React, { useEffect, useState } from 'react';
 import { StyleSheet, Platform, KeyboardAvoidingView } from 'react-native';
 import { Bubble, GiftedChat, InputToolbar } from "react-native-gifted-chat";
-import { query, collection, orderBy, onSnapshot, getFirestore, addDoc, Timestamp } from 'firebase/firestore';
+import { query, collection, orderBy, onSnapshot, getFirestore, addDoc } from 'firebase/firestore';
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import CustomActions from './CustomActions';
+import CustomActions from './CustomActions'; // Make sure this path is correct
+import MapView from 'react-native-maps';
 
 const Chat = ({ route, navigation, isConnected }) => {
   const { name, backgroundColor, userID } = route.params;  
   const [messages, setMessages] = useState([]);
-
   const db = getFirestore();
 
-  const onSend = async (newMessages) => {
-    const message = newMessages[0];
-    await addDoc(collection(db, "messages"), {
-      ...message,
-      createdAt: Timestamp.now(),
-      user: {
-        _id: userID,
-        name: name
-      }
-    });
-  };
+  useEffect(() => {
+    navigation.setOptions({ title: name });
 
-  const renderBubble = (props) => {
-    return (
-      <Bubble
-        {...props}
-        wrapperStyle={{
-          right: {
-            backgroundColor: "#000",
-          },
-          left: {
-            backgroundColor: "#FFF",
-          },
-        }}
-      />
-    );
-  };
-
-  const renderInputToolbar = (props) => {
-    // Render the input toolbar only if connected
     if (isConnected) {
-      return <InputToolbar {...props} />;
+      const q = query(collection(db, "messages"), orderBy("createdAt", "desc"));
+      const unsubscribe = onSnapshot(q, (snapshot) => {
+        const messagesFirestore = snapshot.docs.map(doc => {
+          const data = doc.data();
+          return {
+            _id: doc.id,
+            text: data.text,
+            createdAt: data.createdAt.toDate(),
+            user: data.user,
+            location: data.location // Make sure to include location
+          };
+        });
+        setMessages(messagesFirestore);
+        cacheMessages(messagesFirestore);
+      });
+      return () => unsubscribe();
+    } else {
+      loadCachedMessages();
     }
-    return null; // Do not render anything if offline
-  };
-
-  const renderCustomActions = (props) => {
-    return <CustomActions {...props} />;
-  };
+  }, [db, navigation, name, isConnected]);
 
   const cacheMessages = async (messagesToCache) => {
     try {
@@ -70,49 +55,92 @@ const Chat = ({ route, navigation, isConnected }) => {
     }
   };
 
-  useEffect(() => {
-    navigation.setOptions({ title: name });
+  const renderBubble = (props) => {
+    return (
+      <Bubble
+        {...props}
+        wrapperStyle={{
+          right: {
+            backgroundColor: "#000",
+          },
+          left: {
+            backgroundColor: "#FFF",
+          },
+        }}
+      />
+    );
+  };
 
-    if (isConnected) {
-      const q = query(collection(db, "messages"), orderBy("createdAt", "desc"));
-      const unsubscribe = onSnapshot(q, (snapshot) => {
-        const messagesFirestore = snapshot.docs.map(doc => {
-          const data = doc.data();
-          return {
-            _id: doc.id,
-            text: data.text,
-            createdAt: data.createdAt.toDate(),
-            user: data.user
-          };
-        });
+  const renderInputToolbar = (props) => {
+    return isConnected ? <InputToolbar {...props} /> : null;
+  };
 
-        // Set messages from Firestore and cache them
-        setMessages(messagesFirestore);
-        cacheMessages(messagesFirestore);
-      });
+  const renderCustomActions = (props) => {
+    return <CustomActions {...props} onSend={onSend} />; // Pass onSend prop here
+  };
 
-      return () => unsubscribe();
-    } else {
-      // Load cached messages when offline
-      loadCachedMessages();
+  const renderCustomView = (props) => {
+    const { currentMessage } = props;
+
+    if (currentMessage.location) {
+      return (
+        <MapView
+          style={{
+            width: 150,
+            height: 100,
+            borderRadius: 13,
+            margin: 3,
+          }}
+          region={{
+            latitude: currentMessage.location.latitude,
+            longitude: currentMessage.location.longitude,
+            latitudeDelta: 0.0922,
+            longitudeDelta: 0.0421,
+          }}
+        />
+      );
     }
-  }, [db, navigation, name, isConnected]);
+
+    return null; // Return null if there's no location
+  };
+
+  const onSend = (newMessages) => {
+    newMessages.forEach((message) => {
+      // Ensure user is included in the message
+      const msgToSend = {
+        ...message,
+        user: {
+          _id: userID, // Make sure userID is defined
+          name: name // You can also include the user's name if needed
+        }
+      };
+  
+      console.log('Sending message:', msgToSend); // Debug log to check the message structure
+      addDoc(collection(db, "messages"), msgToSend)
+        .then(() => {
+          console.log("Message sent successfully!");
+        })
+        .catch((error) => {
+          console.error("Error adding message: ", error);
+        });
+    });
+  };
 
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'position' : 'height'}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 60 : 0}
       style={[styles.container, { backgroundColor }]}>
-      
       <GiftedChat
+        messages={messages}
         renderBubble={renderBubble}
         renderInputToolbar={renderInputToolbar}
-        renderActions={renderCustomActions}
-        messages={messages}
         onSend={messages => onSend(messages)}
+        renderActions={renderCustomActions}
+        renderCustomView={renderCustomView}
         user={{
-          _id: userID, 
-          name: name   
+          _id: userID,
+          name
         }}
       />
     </KeyboardAvoidingView>
