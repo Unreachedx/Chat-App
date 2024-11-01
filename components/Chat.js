@@ -1,13 +1,20 @@
-import React, { useEffect, useState } from 'react';
-import { StyleSheet, Platform, KeyboardAvoidingView } from 'react-native';
+import React, { useEffect, useState } from "react";
+import { StyleSheet, Platform, KeyboardAvoidingView } from "react-native";
 import { Bubble, GiftedChat, InputToolbar } from "react-native-gifted-chat";
-import { query, collection, orderBy, onSnapshot, getFirestore, addDoc } from 'firebase/firestore';
+import {
+  query,
+  collection,
+  orderBy,
+  onSnapshot,
+  getFirestore,
+  addDoc,
+} from "firebase/firestore";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import CustomActions from './CustomActions'; // Make sure this path is correct
-import MapView from 'react-native-maps';
+import CustomActions from "./CustomActions"; // Make sure this path is correct
+import MapView from "react-native-maps";
 
 const Chat = ({ route, navigation, isConnected }) => {
-  const { name, backgroundColor, userID } = route.params;  
+  const { name, backgroundColor, userID } = route.params;
   const [messages, setMessages] = useState([]);
   const db = getFirestore();
 
@@ -17,14 +24,14 @@ const Chat = ({ route, navigation, isConnected }) => {
     if (isConnected) {
       const q = query(collection(db, "messages"), orderBy("createdAt", "desc"));
       const unsubscribe = onSnapshot(q, (snapshot) => {
-        const messagesFirestore = snapshot.docs.map(doc => {
+        const messagesFirestore = snapshot.docs.map((doc) => {
           const data = doc.data();
           return {
             _id: doc.id,
             text: data.text,
             createdAt: data.createdAt.toDate(),
             user: data.user,
-            location: data.location // Make sure to include location
+            location: data.location, // Make sure to include location
           };
         });
         setMessages(messagesFirestore);
@@ -38,7 +45,10 @@ const Chat = ({ route, navigation, isConnected }) => {
 
   const cacheMessages = async (messagesToCache) => {
     try {
-      await AsyncStorage.setItem('cached_messages', JSON.stringify(messagesToCache));
+      await AsyncStorage.setItem(
+        "cached_messages",
+        JSON.stringify(messagesToCache)
+      );
     } catch (error) {
       console.log("Error caching messages: ", error);
     }
@@ -46,7 +56,7 @@ const Chat = ({ route, navigation, isConnected }) => {
 
   const loadCachedMessages = async () => {
     try {
-      const cachedMessages = await AsyncStorage.getItem('cached_messages');
+      const cachedMessages = await AsyncStorage.getItem("cached_messages");
       if (cachedMessages) {
         setMessages(JSON.parse(cachedMessages));
       }
@@ -76,7 +86,7 @@ const Chat = ({ route, navigation, isConnected }) => {
   };
 
   const renderCustomActions = (props) => {
-    return <CustomActions {...props} onSend={onSend} />; // Pass onSend prop here
+    return <CustomActions {...props} onSend={onSend} />;
   };
 
   const renderCustomView = (props) => {
@@ -101,46 +111,41 @@ const Chat = ({ route, navigation, isConnected }) => {
       );
     }
 
-    return null; // Return null if there's no location
+    return null;
   };
 
   const onSend = (newMessages) => {
     newMessages.forEach((message) => {
-      // Ensure user is included in the message
       const msgToSend = {
         ...message,
         user: {
-          _id: userID, // Make sure userID is defined
-          name: name // You can also include the user's name if needed
-        }
+          _id: userID,
+          name: name,
+        },
       };
-  
-      console.log('Sending message:', msgToSend); // Debug log to check the message structure
-      addDoc(collection(db, "messages"), msgToSend)
-        .then(() => {
-          console.log("Message sent successfully!");
-        })
-        .catch((error) => {
-          console.error("Error adding message: ", error);
-        });
+
+      addDoc(collection(db, "messages"), msgToSend).catch((error) => {
+        console.error("Error adding message: ", error);
+      });
     });
   };
 
   return (
     <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'position' : 'height'}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 60 : 0}
-      style={[styles.container, { backgroundColor }]}>
+      behavior={Platform.OS === "ios" ? "position" : "height"}
+      keyboardVerticalOffset={Platform.OS === "ios" ? 60 : 0}
+      style={[styles.container, { backgroundColor }]}
+    >
       <GiftedChat
         messages={messages}
         renderBubble={renderBubble}
         renderInputToolbar={renderInputToolbar}
-        onSend={messages => onSend(messages)}
+        onSend={(messages) => onSend(messages)}
         renderActions={renderCustomActions}
         renderCustomView={renderCustomView}
         user={{
           _id: userID,
-          name
+          name,
         }}
       />
     </KeyboardAvoidingView>

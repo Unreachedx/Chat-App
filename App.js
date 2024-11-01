@@ -1,11 +1,11 @@
-import React, { useEffect } from 'react';
-import StartScreen from './components/Start';
-import Chat from './components/Chat';
-import { NavigationContainer } from '@react-navigation/native';
-import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { useNetInfo } from '@react-native-community/netinfo';
-import { LogBox } from 'react-native';
-import { db } from './firebaseConfig'; // Import the db from firebaseConfig
+import React, { useEffect } from "react";
+import StartScreen from "./components/Start";
+import Chat from "./components/Chat";
+import { NavigationContainer } from "@react-navigation/native";
+import { createNativeStackNavigator } from "@react-navigation/native-stack";
+import { useNetInfo } from "@react-native-community/netinfo";
+import { LogBox } from "react-native";
+import { db } from "./firebaseConfig"; // Import the db from firebaseConfig
 import { disableNetwork, enableNetwork } from "firebase/firestore";
 
 LogBox.ignoreLogs(["AsyncStorage has been extracted from"]);
@@ -32,19 +32,17 @@ const App = () => {
 
   // Wrapper component for Chat
   const ChatScreen = ({ route, navigation }) => (
-    <Chat route={route} navigation={navigation} isConnected={netInfo.isConnected} />
+    <Chat
+      route={route}
+      navigation={navigation}
+      isConnected={netInfo.isConnected}
+    />
   );
-
-
-
 
   return (
     <NavigationContainer>
       <Stack.Navigator initialRouteName="StartScreen">
-        <Stack.Screen
-          name="StartScreen"
-          component={StartScreen}
-        />
+        <Stack.Screen name="StartScreen" component={StartScreen} />
         <Stack.Screen
           name="Chat"
           component={ChatScreen} // Use the wrapper component here
