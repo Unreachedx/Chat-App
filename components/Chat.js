@@ -54,9 +54,13 @@ const Chat = ({ db, storage, route, navigation, isConnected }) => {
 
     // function called if isConnected props false in useEffect(), ||[] returns empty array to cachedMessaged if not set yet in AsyncStorage (known as 'logical OR assignment operator')
     const loadCachedMessages = async () => {
-        const cachedMessages = await AsyncStorage.getItem("messages") || [];
-        setMessages(JSON.parse(cachedMessages));
-    }
+        const cachedMessages = await AsyncStorage.getItem("messages");
+        if (cachedMessages) {
+            setMessages(JSON.parse(cachedMessages));
+        } else {
+            setMessages([]);
+        }
+    };
 
     const cacheMessages = async (messagesToCache) => {
         try {
@@ -67,8 +71,12 @@ const Chat = ({ db, storage, route, navigation, isConnected }) => {
     };
 
     // what's called when user sends a message
-    const onSend = (newMessages) => {
-        addDoc(collection(db, "messages"), newMessages[0])
+    const onSend = async (newMessages) => {
+        try {
+            await addDoc(collection(db, "messages"), newMessages[0]);
+        } catch (error) {
+            Alert.alert('Error sending message: ', error.message);
+        }
     };
 
     // Returns InputToolbar if connected, otherwise returns a null

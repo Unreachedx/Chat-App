@@ -1,17 +1,11 @@
 import { TouchableOpacity, Text, View, StyleSheet, Alert } from 'react-native';
 import { useActionSheet } from '@expo/react-native-action-sheet';
-import * as ImagePicker from 'expo-image-picker'; // * imports EVERYTHING from  package
+import * as ImagePicker from 'expo-image-picker'; 
 import * as Location from 'expo-location';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { Timestamp } from 'firebase/firestore';
 
-const CustomActions = ({
-    wrapperStyle,
-    iconTextStyle,
-    onSend,
-    storage,
-    userID
-}) => {
+const CustomActions = ({ wrapperStyle, iconTextStyle, onSend, storage, userID }) => {
     const actionSheet = useActionSheet();
 
     const onActionPress = () => {
@@ -76,11 +70,12 @@ const CustomActions = ({
 
     const pickImage = async () => {
         let permissions = await ImagePicker.requestMediaLibraryPermissionsAsync();
-        if (permissions?.granted) {
-            let result = await ImagePicker.launchImageLibraryAsync();
-            if (!result.canceled) await uploadAndSendImage(result.assets[0].uri);
-            else Alert.alert("Permissions haven't been granted.");
+        if (!permissions?.granted) {
+            Alert.alert("Permissions haven't been granted.");
+            return; // Return early
         }
+        let result = await ImagePicker.launchImageLibraryAsync();
+        if (!result.canceled) await uploadAndSendImage(result.assets[0].uri);
     };
 
     // Take photo using device camera
