@@ -26,10 +26,10 @@ const App = () => {
     apiKey: "AIzaSyBMmOqs30ueT8T2T7ICzU2RPuWnkbq61WM",
     authDomain: "chat-app-database-a5f66.firebaseapp.com",
     projectId: "chat-app-database-a5f66",
-    storageBucket: "chat-app-database-a5f66.appspot.com",
+    storageBucket: "chat-app-database-a5f66.firebasestorage.app",
     messagingSenderId: "661430197367",
-    appId: "1:661430197367:web:26013cf506dd7888a53a72",
-    measurementId: "G-B0S3BY8681"
+    appId: "1:661430197367:web:c0492af54fea9047a53a72",
+    measurementId: "G-P74NPYQXSD"
   };
 
   // Initialize Firebase
