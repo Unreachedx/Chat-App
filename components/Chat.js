@@ -1,161 +1,175 @@
-import React, { useEffect, useState } from "react";
-import { StyleSheet, Platform, KeyboardAvoidingView } from "react-native";
-import { Bubble, GiftedChat, InputToolbar } from "react-native-gifted-chat";
+import { useState, useEffect } from 'react';
+import { StyleSheet, View, Platform, KeyboardAvoidingView, Alert } from 'react-native';
+import { GiftedChat, Bubble, InputToolbar } from 'react-native-gifted-chat';
 import {
-  query,
-  collection,
-  orderBy,
-  onSnapshot,
-  getFirestore,
-  addDoc,
-} from "firebase/firestore";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import CustomActions from "./CustomActions"; // Make sure this path is correct
-import MapView from "react-native-maps";
+    collection,
+    addDoc,
+    onSnapshot,
+    query,
+    orderBy
+} from 'firebase/firestore';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import CustomActions from './CustomActions';
+import MapView from 'react-native-maps';
 
-const Chat = ({ route, navigation, isConnected }) => {
-  const { name, backgroundColor, userID } = route.params;
-  const [messages, setMessages] = useState([]);
-  const db = getFirestore();
+const Chat = ({ db, storage, route, navigation, isConnected }) => {
 
-  useEffect(() => {
-    navigation.setOptions({ title: name });
+    // message state initialization using useState()
+    const [messages, setMessages] = useState([]);
+    const { name, backgroundColor, userID } = route.params;
 
-    if (isConnected) {
-      const q = query(collection(db, "messages"), orderBy("createdAt", "desc"));
-      const unsubscribe = onSnapshot(q, (snapshot) => {
-        const messagesFirestore = snapshot.docs.map((doc) => {
-          const data = doc.data();
-          return {
-            _id: doc.id,
-            text: data.text,
-            createdAt: data.createdAt.toDate(),
-            user: data.user,
-            location: data.location, // Make sure to include location
-          };
-        });
-        setMessages(messagesFirestore);
-        cacheMessages(messagesFirestore);
-      });
-      return () => unsubscribe();
-    } else {
-      loadCachedMessages();
-    }
-  }, [db, navigation, name, isConnected]);
+    // Fetch messages from database in real time
+    let unsubMessages;
 
-  const cacheMessages = async (messagesToCache) => {
-    try {
-      await AsyncStorage.setItem(
-        "cached_messages",
-        JSON.stringify(messagesToCache)
-      );
-    } catch (error) {
-      console.log("Error caching messages: ", error);
-    }
-  };
+    useEffect(() => {
+        navigation.setOptions({ title: name });
 
-  const loadCachedMessages = async () => {
-    try {
-      const cachedMessages = await AsyncStorage.getItem("cached_messages");
-      if (cachedMessages) {
+        if (isConnected === true) {
+            // unregister current onSnapshot() listener to avoid registering multiple listeners when
+            // useEffect code is re-executed.
+            if (unsubMessages) unsubMessages();
+            unsubMessages = null;
+
+            // If connection, fetch data from Firestore Database
+            const q = query(collection(db, "messages"), orderBy("createdAt", "desc"));
+            unsubMessages = onSnapshot(q, (docs) => {
+                let newMessages = [];
+                docs.forEach(doc => {
+                    newMessages.push({
+                        _id: doc.id,
+                        ...doc.data(),
+                        createdAt: new Date(doc.data().createdAt.toMillis())
+                    })
+                })
+                cacheMessages(newMessages);
+                setMessages(newMessages);
+            });
+        } else loadCachedMessages(); //Fetches data from AsyncStorage if no connection
+
+        // Clean up code
+        return () => {
+            if (unsubMessages) unsubMessages();
+        }
+    }, [isConnected]);
+
+    // function called if isConnected props false in useEffect(), ||[] returns empty array to cachedMessaged if not set yet in AsyncStorage (known as 'logical OR assignment operator')
+    const loadCachedMessages = async () => {
+        const cachedMessages = await AsyncStorage.getItem("messages") || [];
         setMessages(JSON.parse(cachedMessages));
-      }
-    } catch (error) {
-      console.log("Error loading cached messages: ", error);
     }
-  };
 
-  const renderBubble = (props) => {
+    const cacheMessages = async (messagesToCache) => {
+        try {
+            await AsyncStorage.setItem('messages', JSON.stringify(messagesToCache));
+        } catch (error) {
+            Alert.alert('Unable to cache messages');
+        }
+    };
+
+    // what's called when user sends a message
+    const onSend = (newMessages) => {
+        addDoc(collection(db, "messages"), newMessages[0])
+    };
+
+    // Returns InputToolbar if connected, otherwise returns a null
+    const renderInputToolbar = (props) => {
+        if (isConnected) return <InputToolbar {...props} />;
+        else return null;
+    };
+
+    const renderBubble = (props) => {
+        return (
+            <Bubble
+                {...props}
+                wrapperStyle={{
+                    // sets received message bubble appearance
+                    right: {
+                        backgroundColor: '#000'
+                    },
+                    // sets senders message bubble appearance
+                    left: {
+                        backgroundColor: '#FFF'
+                    }
+                }}
+            />
+        );
+    };
+
+    // Creates circle button
+    const renderCustomActions = (props) => {
+        return (
+            <CustomActions
+                onSend={onSend}
+                storage={storage}
+                userID={userID}
+                {...props}
+            />
+        );
+    };
+
+    // If currentMessage contains location data, return MapView
+    const renderCustomView = (props) => {
+        const { currentMessage } = props;
+        if (currentMessage.location) {
+            return (
+                <MapView
+                    style={{
+                        width: 150,
+                        height: 100,
+                        borderRadius: 13,
+                        margin: 3
+                    }}
+                    region={{
+                        latitude: currentMessage.location.latitude,
+                        longitude: currentMessage.location.longitude,
+                        latitudeDelta: 0.0922,
+                        longitudeDelta: 0.0421,
+                    }}
+                />
+            );
+        }
+        return null;
+    }
+
     return (
-      <Bubble
-        {...props}
-        wrapperStyle={{
-          right: {
-            backgroundColor: "#000",
-          },
-          left: {
-            backgroundColor: "#FFF",
-          },
-        }}
-      />
+        // pass selected background color from start screen
+        <View style={[styles.container, { backgroundColor: backgroundColor }]}>
+            <GiftedChat
+                // accessiblity features
+                accessible={true}
+                accessibilityLabel="Message input field"
+                accessibilityHint="Type your message here and then press enter"
+                accessibilityRole="message-input"
+                // displays message bubbles
+                messages={messages}
+                renderBubble={renderBubble}
+                renderInputToolbar={renderInputToolbar}
+                onSend={messages => onSend(messages)}
+                renderActions={renderCustomActions}
+                renderCustomView={renderCustomView}
+                // attach correct user ID and name to message
+                user={{
+                    _id: userID,
+                    name: name,
+                }}
+            />
+            {/* Stops keyboard from hiding message input field for android */}
+            {Platform.OS === 'android' ? (
+                <KeyboardAvoidingView behavior="height" />
+            ) : null}
+            {/* and ios */}
+            {Platform.OS === 'ios' ? (
+                <KeyboardAvoidingView behavior="padding" />
+            ) : null}
+        </View>
     );
-  };
-
-  const renderInputToolbar = (props) => {
-    return isConnected ? <InputToolbar {...props} /> : null;
-  };
-
-  const renderCustomActions = (props) => {
-    return <CustomActions {...props} onSend={onSend} />;
-  };
-
-  const renderCustomView = (props) => {
-    const { currentMessage } = props;
-
-    if (currentMessage.location) {
-      return (
-        <MapView
-          style={{
-            width: 150,
-            height: 100,
-            borderRadius: 13,
-            margin: 3,
-          }}
-          region={{
-            latitude: currentMessage.location.latitude,
-            longitude: currentMessage.location.longitude,
-            latitudeDelta: 0.0922,
-            longitudeDelta: 0.0421,
-          }}
-        />
-      );
-    }
-
-    return null;
-  };
-
-  const onSend = (newMessages) => {
-    newMessages.forEach((message) => {
-      const msgToSend = {
-        ...message,
-        user: {
-          _id: userID,
-          name: name,
-        },
-      };
-
-      addDoc(collection(db, "messages"), msgToSend).catch((error) => {
-        console.error("Error adding message: ", error);
-      });
-    });
-  };
-
-  return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === "ios" ? "position" : "height"}
-      keyboardVerticalOffset={Platform.OS === "ios" ? 60 : 0}
-      style={[styles.container, { backgroundColor }]}
-    >
-      <GiftedChat
-        messages={messages}
-        renderBubble={renderBubble}
-        renderInputToolbar={renderInputToolbar}
-        onSend={(messages) => onSend(messages)}
-        renderActions={renderCustomActions}
-        renderCustomView={renderCustomView}
-        user={{
-          _id: userID,
-          name,
-        }}
-      />
-    </KeyboardAvoidingView>
-  );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
+    container: {
+        flex: 1,
+        marginBottom: 40
+    }
 });
 
 export default Chat;
