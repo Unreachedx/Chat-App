@@ -1,7 +1,5 @@
 Chat App
 Welcome to the Chat App! This application allows users to connect and communicate with friends and family through text, images, and location sharing. Built with React Native and Expo, it provides a user-friendly interface and offline capabilities.
-![Chat app Main Screen](https://github.com/user-attachments/assets/f1aec2ef-31a9-4f21-87a3-6e482a148298)
-![Chat Screen](https://github.com/user-attachments/assets/f37f58b0-06ff-4a57-a9bb-606293136076)
 
 Features
 User-Friendly Onboarding: New users can easily join a chat room by entering their name and selecting a background color.
@@ -12,6 +10,11 @@ Offline Access: Users can read messages offline to review conversations anytime.
 Accessibility: The app is compatible with screen readers for users with visual impairments.
 Technical Requirements
 The app requires the following environment setup, dependencies, and database configuration.
+
+Example Screenshots
+
+![Chat app Main Screen](https://github.com/user-attachments/assets/f1aec2ef-31a9-4f21-87a3-6e482a148298)
+![Chat Screen](https://github.com/user-attachments/assets/f37f58b0-06ff-4a57-a9bb-606293136076)
 
 Environment Setup
 Install Node.js: Download and install Node.js from https://nodejs.org.
